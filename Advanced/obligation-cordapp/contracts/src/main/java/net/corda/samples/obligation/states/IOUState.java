@@ -8,6 +8,7 @@ import java.util.*;
 import com.google.common.collect.ImmutableList;
 import net.corda.core.serialization.ConstructorForDeserialization;
 import net.corda.samples.obligation.contracts.IOUContract;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * The IOU State object, with the following properties:
@@ -24,15 +25,14 @@ import net.corda.samples.obligation.contracts.IOUContract;
 @BelongsToContract(IOUContract.class)
 public class IOUState implements ContractState, LinearState {
 
-    public final Amount<Currency> amount;
-    public final Party lender;
-    public final Party borrower;
-    public final Amount<Currency> paid;
+    private final Amount<Currency> amount;
+    private final Party lender;
+    private final Party borrower;
+    private final Amount<Currency> paid;
     private final UniqueIdentifier linearId;
 
-    // Private constructor used only for copying a State object
-    @ConstructorForDeserialization
-    private IOUState(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid, UniqueIdentifier linearId){
+
+    public IOUState(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid, UniqueIdentifier linearId){
         this.amount = amount;
         this.lender = lender;
         this.borrower = borrower;
@@ -40,7 +40,7 @@ public class IOUState implements ContractState, LinearState {
         this.linearId = linearId;
     }
 
-    public IOUState(Amount<Currency> amount, Party lender, Party borrower) {
+    public IOUState(final Amount<Currency> amount, @NotNull final Party lender, @NotNull final Party borrower) {
         this(amount, lender, borrower, new Amount<>(0, amount.getToken()), new UniqueIdentifier());
     }
 
@@ -48,10 +48,12 @@ public class IOUState implements ContractState, LinearState {
         return amount;
     }
 
+    @NotNull
     public Party getLender() {
         return lender;
     }
 
+    @NotNull
     public Party getBorrower() {
         return borrower;
     }
@@ -70,6 +72,7 @@ public class IOUState implements ContractState, LinearState {
      *  lender or the borrower.
      */
     @Override
+    @NotNull
     public List<AbstractParty> getParticipants() {
         return ImmutableList.of(lender, borrower);
     }
