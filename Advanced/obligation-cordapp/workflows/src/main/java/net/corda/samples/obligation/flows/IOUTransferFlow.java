@@ -30,7 +30,7 @@ import static net.corda.core.contracts.ContractsDSL.requireThat;
 
 /**
  * This is the flows which handles transfers of existing IOUs on the ledger.
- * Gathering the counterparty's signature is handled by the [CollectSignaturesFlow].
+ * Gathering the counter-party's signature is handled by the [CollectSignaturesFlow].
  * Notarisation (if required) and commitment to the ledger is handled by the [FinalityFlow].
  * The flows returns the [SignedTransaction] that was committed to the ledger.
  */
@@ -95,7 +95,7 @@ public class IOUTransferFlow{
             tb.addOutputState(inputStateToTransfer.withNewLender(newLender), IOUContract.IOU_CONTRACT_ID);
 
             // 7. Ensure that this flows is being executed by the current lender.
-            if (!inputStateToTransfer.lender.getOwningKey().equals(getOurIdentity().getOwningKey())) {
+            if (!inputStateToTransfer.getLender().getOwningKey().equals(getOurIdentity().getOwningKey())) {
                 throw new IllegalArgumentException("This flows must be run by the current lender.");
             }
 

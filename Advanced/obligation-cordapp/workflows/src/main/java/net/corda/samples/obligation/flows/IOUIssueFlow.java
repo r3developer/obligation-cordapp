@@ -18,8 +18,6 @@ import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 import net.corda.core.utilities.ProgressTracker;
-import net.corda.core.contracts.UniqueIdentifier;
-
 import net.corda.samples.obligation.contracts.IOUContract;
 import net.corda.samples.obligation.states.IOUState;
 import org.jetbrains.annotations.NotNull;
@@ -37,16 +35,12 @@ public class IOUIssueFlow {
     @InitiatingFlow
     @StartableByRPC
     public static class InitiatorFlow extends FlowLogic<SignedTransaction> {
-        @NotNull
-        private final Amount<Currency> amount;
-        @NotNull
-        private final Party lender;
 
+        private final IOUState state;
 
-        public InitiatorFlow(@NotNull final Amount<Currency> amount, @NotNull final Party lender) {
+        public InitiatorFlow(IOUState iouState) {
 
-            this.amount = amount;
-            this.lender = lender;
+            this.state = iouState;
 
         }
 
@@ -65,11 +59,10 @@ public class IOUIssueFlow {
 
             // Generate an unsigned transaction
             Party me = getOurIdentity();
-            IOUState iouState = new IOUState(amount, lender, me, new Amount<Currency>(0, amount.getToken()) , new UniqueIdentifier());
             // Step 2. Create a new issue command.
             // Remember that a command is a CommandData object and a list of CompositeKeys
             final Command<Issue> issueCommand = new Command<>(
-                    new Issue(), iouState.getParticipants()
+                    new Issue(), state.getParticipants()
                     .stream().map(AbstractParty::getOwningKey)
                     .collect(Collectors.toList()));
 
@@ -77,7 +70,7 @@ public class IOUIssueFlow {
             final TransactionBuilder builder = new TransactionBuilder(notary);
 
             // Step 4. Add the iou as an output states, as well as a command to the transaction builder.
-            builder.addOutputState(iouState, IOUContract.IOU_CONTRACT_ID);
+            builder.addOutputState(state, IOUContract.IOU_CONTRACT_ID);
             builder.addCommand(issueCommand);
 
 
@@ -86,8 +79,10 @@ public class IOUIssueFlow {
             final SignedTransaction ptx = getServiceHub().signInitialTransaction(builder);
 
 
-            // Step 6. Collect the other party's signature using the SignTransactionFlow.
-            List<Party> otherParties = iouState.getParticipants()
+            // Step 6. Collect the other party's signature using the CollectSignaturesFlow.Each required signer will need to
+            // respond by invoking its own SignTransactionFlow subclass to check the transaction (by implementing the checkTransaction method)
+            // and provide their signature if they are satisfied.
+            List<Party> otherParties = state.getParticipants()
                     .stream().map(el -> (Party)el)
                     .collect(Collectors.toList());
 
@@ -148,7 +143,9 @@ public class IOUIssueFlow {
             // Run the sign transaction flows to sign the transaction
             subFlow(signTxFlow);
 
-            // Run the ReceiveFinalityFlow to finalize the transaction and persist it to the vault.
+            // Run the ReceiveFinalityFlow to finalize the transaction and persist it to the vault. As the initiator
+            // flow has already called the Finality flow, we call the ReceiveFinalityFlow and not the FinalityFlow as only one
+            // party needs to call the FinalityFlow.
             return subFlow(new ReceiveFinalityFlow(flowSession, txWeJustSigned));
 
         }

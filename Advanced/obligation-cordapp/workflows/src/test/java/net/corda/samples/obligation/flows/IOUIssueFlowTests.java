@@ -81,7 +81,7 @@ public class IOUIssueFlowTests {
         Party lender = a.getInfo().getLegalIdentitiesAndCerts().get(0).getParty();
         Party borrower = b.getInfo().getLegalIdentitiesAndCerts().get(0).getParty();
 
-        IOUState iou = new IOUState(Currencies.POUNDS(10), lender, borrower);
+       IOUState iou = new IOUState(Currencies.POUNDS(10), lender, borrower);
         IOUIssueFlow.InitiatorFlow flow = new IOUIssueFlow.InitiatorFlow(iou);
 
         Future<SignedTransaction> future = a.startFlow(flow);

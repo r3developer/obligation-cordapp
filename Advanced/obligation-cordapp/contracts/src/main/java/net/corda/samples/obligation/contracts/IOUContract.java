@@ -1,7 +1,6 @@
 package net.corda.samples.obligation.contracts;
 
 import net.corda.core.contracts.*;
-
 import static net.corda.core.contracts.ContractsDSL.requireSingleCommand;
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
@@ -98,11 +97,6 @@ public class IOUContract implements Contract {
                         checkOutputState.getAmount().equals(inputState.getAmount()) && checkOutputState.getLinearId().equals(inputState.getLinearId()) && checkOutputState.getBorrower().equals(inputState.getBorrower()) && checkOutputState.getPaid().equals(inputState.getPaid()));
                 require.using("The lender property must change in a transfer.", !outputState.getLender().getOwningKey().equals(inputState.getLender().getOwningKey()));
 
-                List<PublicKey> listOfPublicKeys = new ArrayList<>();
-                listOfPublicKeys.add(inputState.getLender().getOwningKey());
-                listOfPublicKeys.add(inputState.getBorrower().getOwningKey());
-                listOfPublicKeys.add(checkOutputState.getLender().getOwningKey());
-
                 Set<PublicKey> listOfParticipantPublicKeys = inputState.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
                 listOfParticipantPublicKeys.add(outputState.getLender().getOwningKey());
                 List<PublicKey> arrayOfSigners = command.getSigners();
@@ -118,23 +112,20 @@ public class IOUContract implements Contract {
 
             requireThat(require -> {
 
-
                 // Check that only one input IOU should be consumed.
                 require.using("One input IOU should be consumed when settling an IOU.", tx.getInputStates().size() == 1);
 
                 IOUState inputIOU = tx.inputsOfType(IOUState.class).get(0);
                 Amount<Currency> inputAmount = inputIOU.getAmount();
 
-
                 // Check if there is no more than 1 Output IOU state.
-                require.using("One input IOU should be consumed when settling an IOU.", tx.getOutputStates().size() <= 1);
+                require.using("No more than one output IOU should be created", tx.getOutputStates().size() <= 1);
                 if(tx.getOutputStates().size() == 1){
                     // This means part amount of the obligation is settled.
                     IOUState outputIOU = tx.outputsOfType(IOUState.class).get(0);
-                    require.using("The paid amount must increase in case of settlement of the IOU.", (outputIOU.getPaid()).minus(inputIOU.getPaid()).getQuantity() >0);
-                    require.using("The amount of the IOU cannot change during part settlement of the IOU.", inputAmount == outputIOU.getAmount());
-                    require.using(" Only the paid amount can change during part settlement.",
-                            outputIOU.getAmount().equals(inputAmount) && outputIOU.getLinearId().equals(inputIOU.getLinearId()) && outputIOU.getBorrower().equals(inputIOU.getBorrower()) && outputIOU.getPaid().equals(inputIOU.getPaid()));
+                    require.using("Only the paid amount can change during part settlement.",
+                            outputIOU.getAmount().equals(inputAmount) && outputIOU.getLinearId().equals(inputIOU.getLinearId()) && outputIOU.getBorrower().equals(inputIOU.getBorrower()) && outputIOU.getLender().equals(inputIOU.getLender()));
+                    require.using("The paid amount must increase in case of part settlement of the IOU.", (outputIOU.getPaid().getQuantity() > inputIOU.getPaid().getQuantity()));
 
                 }
                 Set<PublicKey> listOfParticipantPublicKeys = inputIOU.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());

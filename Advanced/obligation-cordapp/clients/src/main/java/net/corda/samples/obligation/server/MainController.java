@@ -12,7 +12,6 @@ import net.corda.finance.contracts.asset.Cash;
 import net.corda.samples.obligation.flows.IOUIssueFlow;
 import net.corda.samples.obligation.flows.IOUSettleFlow;
 import net.corda.samples.obligation.flows.IOUTransferFlow;
-import net.corda.samples.obligation.flows.SelfIssueCashFlow;
 import net.corda.samples.obligation.states.IOUState;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -216,17 +215,17 @@ public class MainController {
      * Example request:
      * curl -X GET 'http://localhost:10009/api/iou/self-issue-cash?amount=100&currency=USD'
      */
-    @GetMapping(value =  "self-issue-cash" , produces =  TEXT_PLAIN_VALUE )
-    public ResponseEntity<String> selfIssueCash(@RequestParam(value = "amount") int amount,
-                      @RequestParam(value = "currency") String currency) {
-
-        try {
-            Cash.State cashState = proxy.startTrackedFlowDynamic(SelfIssueCashFlow.class,
-                    new Amount<>((long) amount * 100, Currency.getInstance(currency))).getReturnValue().get();
-            return ResponseEntity.status(HttpStatus.CREATED).body(cashState.toString());
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
+//    @GetMapping(value =  "self-issue-cash" , produces =  TEXT_PLAIN_VALUE )
+//    public ResponseEntity<String> selfIssueCash(@RequestParam(value = "amount") int amount,
+//                      @RequestParam(value = "currency") String currency) {
+//
+//        try {
+//            Cash.State cashState = proxy.startTrackedFlowDynamic(SelfIssueCashFlow.class,
+//                    new Amount<>((long) amount * 100, Currency.getInstance(currency))).getReturnValue().get();
+//            return ResponseEntity.status(HttpStatus.CREATED).body(cashState.toString());
+//
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+//        }
+//    }
 }

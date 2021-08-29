@@ -3,7 +3,6 @@ package net.corda.samples.obligation.states;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.Party;
 import net.corda.core.identity.AbstractParty;
-
 import java.util.*;
 import com.google.common.collect.ImmutableList;
 import net.corda.core.serialization.ConstructorForDeserialization;
@@ -31,8 +30,8 @@ public class IOUState implements ContractState, LinearState {
     private final Amount<Currency> paid;
     private final UniqueIdentifier linearId;
 
-
-    public IOUState(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid, UniqueIdentifier linearId){
+    @ConstructorForDeserialization
+    private IOUState(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid, UniqueIdentifier linearId){
         this.amount = amount;
         this.lender = lender;
         this.borrower = borrower;

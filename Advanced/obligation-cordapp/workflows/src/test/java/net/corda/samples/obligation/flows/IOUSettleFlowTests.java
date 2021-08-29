@@ -1,5 +1,6 @@
 package net.corda.samples.obligation.flows;
 
+import net.corda.core.identity.Party;
 import net.corda.testing.node.*;
 import net.corda.core.contracts.Amount;
 import net.corda.core.contracts.CommandWithParties;
@@ -11,6 +12,7 @@ import net.corda.finance.Currencies;
 import net.corda.finance.contracts.asset.Cash;
 import net.corda.samples.obligation.states.IOUState;
 import net.corda.samples.obligation.contracts.IOUContract;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -74,12 +76,6 @@ public class IOUSettleFlowTests {
         return (SignedTransaction) future.get();
     }
 
-    private Cash.State issueCash(Amount<Currency> amount) throws InterruptedException, ExecutionException {
-        SelfIssueCashFlow flow = new SelfIssueCashFlow(amount);
-        CordaFuture future = a.startFlow(flow);
-        mockNetwork.runNetwork();
-        return (Cash.State) future.get();
-    }
 
     /**
      * Task 1.
@@ -99,7 +95,6 @@ public class IOUSettleFlowTests {
     @Test
     public void flowReturnsCorrectlyFormedPartiallySignedTransaction() throws Exception {
         SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        issueCash(Currencies.POUNDS(5));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
         IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
@@ -112,32 +107,16 @@ public class IOUSettleFlowTests {
         a.transaction(() -> {
             try {
                 LedgerTransaction ledgerTx = settleResult.toLedgerTransaction(a.getServices(), false);
-                assert(ledgerTx.getInputs().size() == 2);
-                assert(ledgerTx.getOutputs().size() == 2);
+                assert(ledgerTx.getInputs().size() == 1);
+                assert(ledgerTx.getOutputs().size() == 1);
 
                 IOUState outputIOU = ledgerTx.outputsOfType(IOUState.class).get(0);
                 IOUState correctOutputIOU = inputIOU.pay(Currencies.POUNDS(5));
 
-                assert (outputIOU.amount.equals(correctOutputIOU.amount));
-                assert (outputIOU.paid.equals(correctOutputIOU.paid));
-                assert (outputIOU.lender.equals(correctOutputIOU.lender));
-                assert (outputIOU.borrower.equals(correctOutputIOU.borrower));
-
-                // Sum all the output cash. This is complicated as there may be multiple cash output states with not all of them
-                // being assigned to the lender.
-                List<Cash.State> outputCash = ledgerTx.getOutputs().stream()
-                        .map(state -> (Cash.State) state.getData())
-                        .filter(state -> state.getOwner().getOwningKey().equals(b.getInfo().getLegalIdentities().get(0).getOwningKey()))
-                        .collect(Collectors.toList());
-
-                // Sum the acceptable cash sent to the lender
-                Amount<Currency> outputCashSum = new Amount<>(0, inputIOU.amount.getToken());
-                for (Cash.State cash: outputCash) {
-                    Amount<Currency> addCash = new Amount<>(cash.getAmount().getQuantity(), cash.getAmount().getToken().getProduct());
-                    outputCashSum = outputCashSum.plus(addCash);
-                }
-
-                assert (outputCashSum.equals(inputIOU.amount.minus(inputIOU.paid).minus(outputIOU.paid)));
+                assert (outputIOU.getAmount().equals(correctOutputIOU.getAmount()));
+                assert (outputIOU.getPaid().equals(correctOutputIOU.getPaid()));
+                assert (outputIOU.getLender().equals(correctOutputIOU.getLender()));
+                assert (outputIOU.getBorrower().equals(correctOutputIOU.getBorrower()));
 
                 CommandWithParties command = ledgerTx.getCommands().get(0);
                 assert (command.getValue().equals(new IOUContract.Commands.Settle()));
@@ -161,8 +140,8 @@ public class IOUSettleFlowTests {
      */
     @Test
     public void settleFlowCanOnlyBeRunByBorrower() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        issueCash(Currencies.POUNDS(5));
+        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10),b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
+
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
         IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
         Future<SignedTransaction> futureSettleResult = b.startFlow(flow);
@@ -175,60 +154,16 @@ public class IOUSettleFlowTests {
         }
     }
 
-    /**
-     * Task 3.
-     * The borrower must have at least SOME cash in the right currency to pay the lender.
-     * TODO: Add a check in the flows to ensure that the borrower has a balance of cash in the right currency.
-     * Hint:
-     * - Use [getCashBalance(getServiceHub(), (Currency) amount.getToken())].
-     * - Use an if statement to check there is cash in the right currency present.
-     */
-    @Test
-    public void borrowerMustHaveCashInRightCurrency() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        issueCash(Currencies.POUNDS(5));
-        IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
-        Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
 
-        try {
-            mockNetwork.runNetwork();
-            futureSettleResult.get();
-        } catch (Exception exception) {
-            assert exception.getMessage().equals("java.lang.IllegalArgumentException: Borrower has no GBP to settle.");
-        }
-    }
 
     /**
      * Task 4.
-     * The borrower must have enough cash in the right currency to pay the lender.
-     * TODO: Add a check in the flows to ensure that the borrower has enough cash to pay the lender.
-     * Hint: Add another if statement similar to the one required above.
-     */
-    @Test
-    public void borrowerMustHaveEnoughCashInRightCurrency() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
-        Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
-
-        try {
-            mockNetwork.runNetwork();
-            futureSettleResult.get();
-        } catch (Exception exception) {
-            assert exception.getMessage().equals("java.lang.IllegalArgumentException: Borrower doesn't have enough cash to settle with the amount specified.");
-        }
-    }
-
-    /**
-     * Task 5.
      * We need to get the transaction signed by the other party.
      * TODO: Use a subFlow call to [initiateFlow] and the [SignTransactionFlow] to get a signature from the lender.
      */
     @Test
     public void flowReturnsTransactionSignedByBothParties() throws Exception {
         SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        issueCash(Currencies.POUNDS(5));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
         IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
@@ -242,14 +177,13 @@ public class IOUSettleFlowTests {
     }
 
     /**
-     * Task 6.
+     * Task 5.
      * We need to get the transaction signed by the notary service
      * TODO: Use a subFlow call to the [FinalityFlow] to get a signature from the lender.
      */
     @Test
     public void flowReturnsCommittedTransaction() throws Exception {
         SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
-        issueCash(Currencies.POUNDS(5));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
         IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
