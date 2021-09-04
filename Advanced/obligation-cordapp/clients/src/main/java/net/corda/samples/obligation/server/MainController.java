@@ -155,14 +155,13 @@ public class MainController {
 
     @PutMapping(value =  "/issue-iou" , produces = TEXT_PLAIN_VALUE )
     public ResponseEntity<String> issueIOU(@RequestParam(value = "amount") int amount,
-                                           @RequestParam(value = "currency") String currency,
                                            @RequestParam(value = "party") String party) throws IllegalArgumentException {
         // Get party objects for myself and the counterparty.
         Party me = proxy.nodeInfo().getLegalIdentities().get(0);
         Party lender = Optional.ofNullable(proxy.wellKnownPartyFromX500Name(CordaX500Name.parse(party))).orElseThrow(() -> new IllegalArgumentException("Unknown party name."));
         // Create a new IOU states using the parameters given.
         try {
-            IOUState state = new IOUState(new Amount<>((long) amount * 100, Currency.getInstance(currency)), lender, me);
+            IOUState state = new IOUState(amount, lender, me);
             // Start the IOUIssueFlow. We block and waits for the flows to return.
             SignedTransaction result = proxy.startTrackedFlowDynamic(IOUIssueFlow.InitiatorFlow.class, state).getReturnValue().get();
             // Return the response.
@@ -196,14 +195,13 @@ public class MainController {
      */
     @GetMapping(value =  "settle-iou" , produces = TEXT_PLAIN_VALUE )
     public  ResponseEntity<String> settleIOU(@RequestParam(value = "id") String id,
-                                             @RequestParam(value = "amount") int amount,
-                                             @RequestParam(value = "currency") String currency) {
+                                             @RequestParam(value = "amount") int amount) {
 
         UniqueIdentifier linearId = new UniqueIdentifier(null, UUID.fromString(id));
         try {
             proxy.startTrackedFlowDynamic(IOUSettleFlow.InitiatorFlow.class, linearId,
-                    new Amount<>((long) amount * 100, Currency.getInstance(currency))).getReturnValue().get();
-            return ResponseEntity.status(HttpStatus.CREATED).body(""+ amount+ currency +" paid off on IOU id "+linearId.toString()+".");
+                    amount).getReturnValue().get();
+            return ResponseEntity.status(HttpStatus.CREATED).body(""+ amount+ " paid off on IOU id "+linearId.toString()+".");
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

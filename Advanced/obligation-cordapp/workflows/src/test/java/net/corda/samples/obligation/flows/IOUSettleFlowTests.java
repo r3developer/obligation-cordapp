@@ -8,8 +8,6 @@ import net.corda.core.concurrent.CordaFuture;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.transactions.LedgerTransaction;
 import net.corda.core.transactions.SignedTransaction;
-import net.corda.finance.Currencies;
-import net.corda.finance.contracts.asset.Cash;
 import net.corda.samples.obligation.states.IOUState;
 import net.corda.samples.obligation.contracts.IOUContract;
 import org.jetbrains.annotations.NotNull;
@@ -20,8 +18,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Currency;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -94,9 +90,9 @@ public class IOUSettleFlowTests {
      */
     @Test
     public void flowReturnsCorrectlyFormedPartiallySignedTransaction() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
+        SignedTransaction stx = issueIOU(new IOUState(10, b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
+        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), 5);
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
 
         mockNetwork.runNetwork();
@@ -111,10 +107,10 @@ public class IOUSettleFlowTests {
                 assert(ledgerTx.getOutputs().size() == 1);
 
                 IOUState outputIOU = ledgerTx.outputsOfType(IOUState.class).get(0);
-                IOUState correctOutputIOU = inputIOU.pay(Currencies.POUNDS(5));
+                IOUState correctOutputIOU = new IOUState(inputIOU.getAmount(), inputIOU.getLender(), inputIOU.getBorrower(), inputIOU.getPaid() +5 ,inputIOU.getLinearId() );
 
-                assert (outputIOU.getAmount().equals(correctOutputIOU.getAmount()));
-                assert (outputIOU.getPaid().equals(correctOutputIOU.getPaid()));
+                assert (outputIOU.getAmount() == correctOutputIOU.getAmount());
+                assert (outputIOU.getPaid() == correctOutputIOU.getPaid());
                 assert (outputIOU.getLender().equals(correctOutputIOU.getLender()));
                 assert (outputIOU.getBorrower().equals(correctOutputIOU.getBorrower()));
 
@@ -140,10 +136,10 @@ public class IOUSettleFlowTests {
      */
     @Test
     public void settleFlowCanOnlyBeRunByBorrower() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10),b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
+        SignedTransaction stx = issueIOU(new IOUState(10,b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
 
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
+        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), 5);
         Future<SignedTransaction> futureSettleResult = b.startFlow(flow);
 
         try {
@@ -163,9 +159,9 @@ public class IOUSettleFlowTests {
      */
     @Test
     public void flowReturnsTransactionSignedByBothParties() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
+        SignedTransaction stx = issueIOU(new IOUState(10, b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
+        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), 5);
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
 
         try {
@@ -183,9 +179,9 @@ public class IOUSettleFlowTests {
      */
     @Test
     public void flowReturnsCommittedTransaction() throws Exception {
-        SignedTransaction stx = issueIOU(new IOUState(Currencies.POUNDS(10), b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
+        SignedTransaction stx = issueIOU(new IOUState(10, b.getInfo().getLegalIdentities().get(0), a.getInfo().getLegalIdentities().get(0)));
         IOUState inputIOU = stx.getTx().outputsOfType(IOUState.class).get(0);
-        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), Currencies.POUNDS(5));
+        IOUSettleFlow.InitiatorFlow flow = new IOUSettleFlow.InitiatorFlow(inputIOU.getLinearId(), 5);
         Future<SignedTransaction> futureSettleResult = a.startFlow(flow);
 
         try {

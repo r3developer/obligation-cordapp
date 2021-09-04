@@ -2,6 +2,9 @@ package net.corda.samples.obligation.flows;
 
 import co.paralleluniverse.fibers.Suspendable;
 
+import java.security.PublicKey;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Currency;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,13 +40,11 @@ public class IOUIssueFlow {
     public static class InitiatorFlow extends FlowLogic<SignedTransaction> {
 
         private final IOUState state;
-
         public InitiatorFlow(IOUState iouState) {
 
             this.state = iouState;
 
         }
-
         @Suspendable
         @Override
         public SignedTransaction call() throws FlowException {
@@ -61,10 +62,10 @@ public class IOUIssueFlow {
             Party me = getOurIdentity();
             // Step 2. Create a new issue command.
             // Remember that a command is a CommandData object and a list of CompositeKeys
-            final Command<Issue> issueCommand = new Command<>(
-                    new Issue(), state.getParticipants()
-                    .stream().map(AbstractParty::getOwningKey)
-                    .collect(Collectors.toList()));
+            List<PublicKey> listOfKeys = new ArrayList<>();
+            listOfKeys.add(state.getLender().getOwningKey());
+            listOfKeys.add(state.getBorrower().getOwningKey());
+            final Command<Issue> issueCommand = new Command<>(new Issue(), listOfKeys);
 
             // Step 3. Create a new TransactionBuilder object.
             final TransactionBuilder builder = new TransactionBuilder(notary);
@@ -82,15 +83,19 @@ public class IOUIssueFlow {
             // Step 6. Collect the other party's signature using the CollectSignaturesFlow.Each required signer will need to
             // respond by invoking its own SignTransactionFlow subclass to check the transaction (by implementing the checkTransaction method)
             // and provide their signature if they are satisfied.
-            List<Party> otherParties = state.getParticipants()
-                    .stream().map(el -> (Party)el)
-                    .collect(Collectors.toList());
+            List<Party> otherParties = new ArrayList<Party>();
+            otherParties.add(state.getLender());
+            otherParties.add(state.getBorrower());
 
             otherParties.remove(getOurIdentity());
 
-            List<FlowSession> sessions = otherParties
-                    .stream().map(el -> initiateFlow(el))
-                    .collect(Collectors.toList());
+
+            // 9. Collect all of the required signatures from other Corda nodes using the CollectSignaturesFlow
+            List<FlowSession> sessions = new ArrayList<>();
+
+            for (Party otherParty: otherParties) {
+                sessions.add(initiateFlow(otherParty));
+                }
 
             SignedTransaction stx = subFlow(new CollectSignaturesFlow(ptx, sessions));
 

@@ -57,7 +57,7 @@ public class IOUIssueTests {
      */
     @Test
     public void mustIncludeIssueCommand() {
-        IOUState iou = new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
 
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
@@ -96,7 +96,7 @@ public class IOUIssueTests {
      */
     @Test
     public void issueTransactionMustHaveNoInputs() {
-        IOUState iou = new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(1, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
 
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
@@ -123,7 +123,7 @@ public class IOUIssueTests {
      */
     @Test
     public void issueTransactionMustHaveOneOutput() {
-        IOUState iou = new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(1, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
@@ -162,22 +162,12 @@ public class IOUIssueTests {
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(Currencies.POUNDS(0), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty())); // Zero amount fails.
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(0, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty())); // Zero amount fails.
                 return tx.failsWith("A newly issued IOU must have a positive amount.");
             });
             l.transaction(tx -> {
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(Currencies.SWISS_FRANCS(100), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty()));
-                return tx.verifies();
-            });
-            l.transaction(tx -> {
-                tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty()));
-                return tx.verifies();
-            });
-            l.transaction(tx -> {
-                tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty()));
                 return tx.verifies();
             });
             return null;
@@ -194,8 +184,8 @@ public class IOUIssueTests {
      */
     @Test
     public void lenderAndBorrowerCannotBeTheSame() {
-        IOUState iou = new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
-        IOUState borrowerIsLenderIou = new IOUState(Currencies.POUNDS(10), TestUtils.ALICE.getParty(), TestUtils.ALICE.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState borrowerIsLenderIou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.ALICE.getParty());
         ledger(ledgerServices, l-> {
             l.transaction(tx -> {
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Issue());
@@ -237,7 +227,7 @@ public class IOUIssueTests {
 //     */
     @Test
     public void lenderAndBorrowerMustSignIssueTransaction() {
-        IOUState iou = new IOUState(Currencies.POUNDS(1), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         ledger(ledgerServices, l->{
             l.transaction(tx-> {
                 tx.command(TestUtils.DUMMY.getPublicKey(),  new IOUContract.Commands.Issue());

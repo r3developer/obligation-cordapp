@@ -32,46 +32,17 @@ public class IOUSettleTests {
     );
 
 
-    @Test
-    public void mustIncludeSettleCommand() {
-        IOUState iou = new IOUState(Currencies.POUNDS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
-
-        ledger(ledgerServices, l -> {
-            l.transaction(tx -> {
-                tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.POUNDS(5)));
-                tx.command(TestUtils.BOB.getPublicKey(), new Cash.Commands.Move());
-                return tx.failsWith("Contract Verification Failed");
-            });
-            l.transaction(tx -> {
-                tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.POUNDS(5)));
-                tx.command(TestUtils.BOB.getPublicKey(), new Commands.DummyCommand());
-                return tx.failsWith("Contract verification failed");
-            });
-            l.transaction(tx -> {
-                tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.POUNDS(5)));
-                tx.command(TestUtils.BOB.getPublicKey(), new Cash.Commands.Move());
-                tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Settle());
-                return tx.verifies();
-            });
-            return null;
-        });
-    }
-
-
 
     @Test
     public void mustHaveOneInputIOU() {
-        IOUState iou = new IOUState(Currencies.POUNDS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
-        IOUState iouOne = new IOUState(Currencies.POUNDS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iouOne = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
 
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 //No input
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Settle());
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.POUNDS(5)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(),iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
                 tx.failsWith("One input IOU should be consumed when settling an IOU.");
                 return null;
             });
@@ -79,7 +50,7 @@ public class IOUSettleTests {
                 //One input and one output
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Settle());
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.POUNDS(5)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(),iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
                 tx.command(TestUtils.BOB.getPublicKey(), new Cash.Commands.Move());
                 tx.verifies();
                 return null;
@@ -99,7 +70,7 @@ public class IOUSettleTests {
 
     @Test
     public void mustNotHaveMoreThanOneOutputIOU() {
-        IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
@@ -109,8 +80,8 @@ public class IOUSettleTests {
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.DOLLARS(5)));
-                tx.output(IOUContract.IOU_CONTRACT_ID,iou.pay(Currencies.DOLLARS(6)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(),iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID,new IOUState(iou.getAmount(),iou.getLender(), iou.getBorrower(), iou.getPaid()+6, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.failsWith("No more than one output IOU should be created");
                 return null;
@@ -122,12 +93,12 @@ public class IOUSettleTests {
 
     @Test
     public void onlyPaidPropertyMayChange() {
-        IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
 
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(iou.getAmount(), iou.getLender(), TestUtils.CHARLIE.getParty(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(iou.getAmount(), iou.getLender(), TestUtils.CHARLIE.getParty(), iou.getPaid()+5, iou.getLinearId() );
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.failsWith("Only the paid amount can change during part settlement.");
@@ -136,7 +107,7 @@ public class IOUSettleTests {
 
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(Currencies.DOLLARS(0), iou.getLender(), TestUtils.CHARLIE.getParty(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(0, iou.getLender(), TestUtils.CHARLIE.getParty(), iou.getPaid()+5, iou.getLinearId() );
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.failsWith("Only the paid amount can change during part settlement.");
@@ -145,7 +116,7 @@ public class IOUSettleTests {
 
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(iou.getAmount(), TestUtils.CHARLIE.getParty(), iou.getBorrower(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(iou.getAmount(), TestUtils.CHARLIE.getParty(),iou.getBorrower(),iou.getPaid()+5, iou.getLinearId());
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.failsWith("Only the paid amount can change during part settlement.");
@@ -154,7 +125,7 @@ public class IOUSettleTests {
 
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId() );
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.verifies();
@@ -168,11 +139,11 @@ public class IOUSettleTests {
 
     @Test
     public void paidPropertyMustIncreaseForPartSettlement() {
-       IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+       IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(iou.getAmount(), iou.getLender(), TestUtils.BOB.getParty(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(iou.getAmount(), iou.getLender(), TestUtils.BOB.getParty(), iou.getPaid() +5 , iou.getLinearId());
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.verifies();
@@ -180,13 +151,13 @@ public class IOUSettleTests {
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                IOUState iouCopy = iou.copy(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()).pay(Currencies.DOLLARS(5));
+                IOUState iouCopy = new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId());
                 tx.output(IOUContract.IOU_CONTRACT_ID, iouCopy);
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.verifies();
                 l.transaction(tx2 ->{
                     tx2.input(IOUContract.IOU_CONTRACT_ID, iouCopy);
-                    IOUState iouCopyOfCopy = iouCopy.copy(iou.getAmount(), iou.getLender(), iou.getBorrower(), Currencies.DOLLARS(4));
+                    IOUState iouCopyOfCopy = new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), 4, iou.getLinearId());
                     tx2.output(IOUContract.IOU_CONTRACT_ID, iouCopyOfCopy);
                     tx2.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                     tx2.failsWith("The paid amount must increase in case of part settlement of the IOU.");
@@ -203,27 +174,27 @@ public class IOUSettleTests {
 
     @Test
     public void mustBeSignedByAllParticipants() {
-        IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iou = new IOUState(10, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
 
         ledger(ledgerServices, l -> {
             l.transaction(tx -> {
 
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.DOLLARS(5)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.CHARLIE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.failsWith("Both lender and borrower must sign IOU settle transaction.");
                 return null;
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.DOLLARS(5)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
                 tx.command(TestUtils.BOB.getPublicKey(), new IOUContract.Commands.Settle());
                 tx.failsWith("Both lender and borrower must sign IOU settle transaction.");
                 return null;
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, iou.pay(Currencies.DOLLARS(5)));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(), iou.getLender(), iou.getBorrower(), iou.getPaid()+5, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.BOB.getPublicKey(), TestUtils.ALICE.getPublicKey()), new IOUContract.Commands.Settle());
                 tx.verifies();
                 return null;

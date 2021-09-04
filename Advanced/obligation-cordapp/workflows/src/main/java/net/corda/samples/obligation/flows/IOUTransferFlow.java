@@ -23,7 +23,6 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static net.corda.core.contracts.ContractsDSL.requireThat;
 
@@ -77,9 +76,9 @@ public class IOUTransferFlow{
             TransactionBuilder tb = new TransactionBuilder(notary);
 
             // 4. Construct a transfer command to be added to the transaction.
-            List<PublicKey> listOfRequiredSigners = inputStateToTransfer.getParticipants()
-                    .stream().map(AbstractParty::getOwningKey)
-                    .collect(Collectors.toList());
+            List<PublicKey> listOfRequiredSigners = new ArrayList<>();
+            listOfRequiredSigners.add(inputStateToTransfer.getLender().getOwningKey());
+            listOfRequiredSigners.add(inputStateToTransfer.getBorrower().getOwningKey());
             listOfRequiredSigners.add(newLender.getOwningKey());
 
             Command<Transfer> command = new Command<>(
@@ -92,7 +91,8 @@ public class IOUTransferFlow{
 
             // 6. Add input and output states to flows using the TransactionBuilder.
             tb.addInputState(inputStateAndRefToTransfer);
-            tb.addOutputState(inputStateToTransfer.withNewLender(newLender), IOUContract.IOU_CONTRACT_ID);
+            IOUState opState = new IOUState(inputStateToTransfer.getAmount(), newLender, inputStateToTransfer.getBorrower(), inputStateToTransfer.getPaid(), inputStateToTransfer.getLinearId());
+            tb.addOutputState(opState, IOUContract.IOU_CONTRACT_ID);
 
             // 7. Ensure that this flows is being executed by the current lender.
             if (!inputStateToTransfer.getLender().getOwningKey().equals(getOurIdentity().getOwningKey())) {

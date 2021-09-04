@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 @LegalProseReference(uri = "<prose_contract_uri>")
 public class IOUContract implements Contract {
+    // Used to identify our contracts when building a transaction
     public static final String IOU_CONTRACT_ID = "net.corda.samples.obligation.contracts.IOUContract";
 
     /**
@@ -30,6 +31,7 @@ public class IOUContract implements Contract {
      * - Transfer: Re-assigning the lender/beneficiary.
      * - Settle: Fully or partially settling the [IOUState].
      */
+    //Used to indicate the transactions intent
     public interface Commands extends CommandData {
         class Issue extends TypeOnlyCommandData implements Commands{}
         class Transfer extends TypeOnlyCommandData implements Commands{}
@@ -51,96 +53,103 @@ public class IOUContract implements Contract {
          * should be performing - we will use different assertions to enable the contracts to verify the transaction
          * for issuing, settling and transferring.
          */
-        if (commandData.equals(new Commands.Issue())) {
+        if(commandData instanceof Commands.Issue)
+            verifyIssue(tx);
 
-            requireThat(require -> {
+        else if(commandData instanceof Commands.Transfer)
+            verifyTransfer(tx);
 
-                require.using("No inputs should be consumed when issuing an IOU.", tx.getInputStates().size() == 0);
-                require.using( "Only one output states should be created when issuing an IOU.", tx.getOutputStates().size() == 1);
+        else if (commandData instanceof Commands.Settle)
+            verifySettle(tx);
 
-                IOUState outputState = tx.outputsOfType(IOUState.class).get(0);
-                require.using( "A newly issued IOU must have a positive amount.", outputState.getAmount().getQuantity() > 0);
-                require.using( "The lender and borrower cannot have the same identity.", outputState.getLender().getOwningKey() != outputState.getBorrower().getOwningKey());
+        else
+            throw new IllegalArgumentException("Invalid Command");
 
-                List<PublicKey> signers = tx.getCommands().get(0).getSigners();
-                HashSet<PublicKey> signersSet = new HashSet<>();
-                for (PublicKey key: signers) {
-                    signersSet.add(key);
-                }
+    }
 
-                List<AbstractParty> participants = tx.getOutputStates().get(0).getParticipants();
-                HashSet<PublicKey> participantKeys = new HashSet<>();
-                for (AbstractParty party: participants) {
-                    participantKeys.add(party.getOwningKey());
-                }
 
-                require.using("Both lender and borrower together only may sign IOU issue transaction.", signersSet.containsAll(participantKeys) && signersSet.size() == 2);
 
-                return null;
-            });
+    private void verifyIssue(LedgerTransaction tx){
+        requireThat(require -> {
 
-        }
+            require.using("No inputs should be consumed when issuing an IOU.", tx.getInputStates().size() == 0);
+            require.using( "Only one output states should be created when issuing an IOU.", tx.getOutputStates().size() == 1);
 
-        else if (commandData.equals(new Commands.Transfer())) {
+            IOUState outputState = tx.outputsOfType(IOUState.class).get(0);
+            require.using( "A newly issued IOU must have a positive amount.", outputState.getAmount() > 0);
+            require.using( "The lender and borrower cannot have the same identity.", outputState.getLender().getOwningKey() != outputState.getBorrower().getOwningKey());
 
-            requireThat(require -> {
+            List<PublicKey> signers = tx.getCommand(0).getSigners();
+            HashSet<PublicKey> signersSet = new HashSet<>();
+            for (PublicKey key: signers) {
+                signersSet.add(key);
+            }
 
-                require.using("An IOU transfer transaction should only consume one input states.", tx.getInputStates().size() == 1);
-                require.using("An IOU transfer transaction should only create one output states.", tx.getOutputStates().size() == 1);
+            List<AbstractParty> participants = tx.getOutputStates().get(0).getParticipants();
+            HashSet<PublicKey> participantKeys = new HashSet<>();
+            for (AbstractParty party: participants) {
+                participantKeys.add(party.getOwningKey());
+            }
 
-                // Copy of input with new lender;
-                IOUState inputState = tx.inputsOfType(IOUState.class).get(0);
-                IOUState outputState = tx.outputsOfType(IOUState.class).get(0);
-                IOUState checkOutputState = outputState.withNewLender(inputState.getLender());
+            require.using("Both lender and borrower together only may sign IOU issue transaction.", signersSet.containsAll(participantKeys) && signersSet.size() == 2);
 
-                require.using("Only the lender property may change.",
-                        checkOutputState.getAmount().equals(inputState.getAmount()) && checkOutputState.getLinearId().equals(inputState.getLinearId()) && checkOutputState.getBorrower().equals(inputState.getBorrower()) && checkOutputState.getPaid().equals(inputState.getPaid()));
-                require.using("The lender property must change in a transfer.", !outputState.getLender().getOwningKey().equals(inputState.getLender().getOwningKey()));
+            return null;
+        });
 
-                Set<PublicKey> listOfParticipantPublicKeys = inputState.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
-                listOfParticipantPublicKeys.add(outputState.getLender().getOwningKey());
-                List<PublicKey> arrayOfSigners = command.getSigners();
-                Set<PublicKey> setOfSigners = new HashSet<PublicKey>(arrayOfSigners);
-                require.using("The borrower, old lender and new lender only must sign an IOU transfer transaction", setOfSigners.equals(listOfParticipantPublicKeys) && setOfSigners.size() == 3);
-                return null;
+    }
 
-            });
+    private void verifyTransfer(LedgerTransaction tx){
+        requireThat(require -> {
 
-        }
+            require.using("An IOU transfer transaction should only consume one input states.", tx.getInputStates().size() == 1);
+            require.using("An IOU transfer transaction should only create one output states.", tx.getOutputStates().size() == 1);
 
-        else if (commandData.equals(new Commands.Settle())) {
+            // Copy of input with new lender;
+            IOUState inputState = tx.inputsOfType(IOUState.class).get(0);
+            IOUState outputState = tx.outputsOfType(IOUState.class).get(0);
+            IOUState checkOutputState = new IOUState(outputState.getAmount(), inputState.getLender(), outputState.getBorrower(), outputState.getPaid(), outputState.getLinearId());
 
-            requireThat(require -> {
+            require.using("Only the lender property may change.",
+                    (checkOutputState.getAmount() == inputState.getAmount()) && checkOutputState.getLinearId().equals(inputState.getLinearId()) && checkOutputState.getBorrower().equals(inputState.getBorrower()) && (checkOutputState.getPaid() == inputState.getPaid()));
+            require.using("The lender property must change in a transfer.", !outputState.getLender().getOwningKey().equals(inputState.getLender().getOwningKey()));
 
-                // Check that only one input IOU should be consumed.
-                require.using("One input IOU should be consumed when settling an IOU.", tx.getInputStates().size() == 1);
+            Set<PublicKey> listOfParticipantPublicKeys = inputState.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
+            listOfParticipantPublicKeys.add(outputState.getLender().getOwningKey());
+            List<PublicKey> arrayOfSigners = tx.getCommand(0).getSigners();
+            Set<PublicKey> setOfSigners = new HashSet<PublicKey>(arrayOfSigners);
+            require.using("The borrower, old lender and new lender only must sign an IOU transfer transaction", setOfSigners.equals(listOfParticipantPublicKeys) && setOfSigners.size() == 3);
+            return null;
 
-                IOUState inputIOU = tx.inputsOfType(IOUState.class).get(0);
-                Amount<Currency> inputAmount = inputIOU.getAmount();
+        });
 
-                // Check if there is no more than 1 Output IOU state.
-                require.using("No more than one output IOU should be created", tx.getOutputStates().size() <= 1);
-                if(tx.getOutputStates().size() == 1){
-                    // This means part amount of the obligation is settled.
-                    IOUState outputIOU = tx.outputsOfType(IOUState.class).get(0);
-                    require.using("Only the paid amount can change during part settlement.",
-                            outputIOU.getAmount().equals(inputAmount) && outputIOU.getLinearId().equals(inputIOU.getLinearId()) && outputIOU.getBorrower().equals(inputIOU.getBorrower()) && outputIOU.getLender().equals(inputIOU.getLender()));
-                    require.using("The paid amount must increase in case of part settlement of the IOU.", (outputIOU.getPaid().getQuantity() > inputIOU.getPaid().getQuantity()));
+    }
 
-                }
-                Set<PublicKey> listOfParticipantPublicKeys = inputIOU.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
-                List<PublicKey> arrayOfSigners = command.getSigners();
-                Set<PublicKey> setOfSigners = new HashSet<PublicKey>(arrayOfSigners);
-                require.using("Both lender and borrower must sign IOU settle transaction.", setOfSigners.equals(listOfParticipantPublicKeys));
+    private void verifySettle(LedgerTransaction tx){
+        requireThat(require -> {
 
-                return null;
-            });
+            // Check that only one input IOU should be consumed.
+            require.using("One input IOU should be consumed when settling an IOU.", tx.getInputStates().size() == 1);
 
-        }
+            IOUState inputIOU = tx.inputsOfType(IOUState.class).get(0);
+            int inputAmount = inputIOU.getAmount();
 
-        else {
-            throw new IllegalArgumentException("Unknown command " + commandData);
-        }
+            // Check if there is no more than 1 Output IOU state.
+            require.using("No more than one output IOU should be created", tx.getOutputStates().size() <= 1);
+            if(tx.getOutputStates().size() == 1){
+                // This means part amount of the obligation is settled.
+                IOUState outputIOU = tx.outputsOfType(IOUState.class).get(0);
+                require.using("Only the paid amount can change during part settlement.",
+                        (outputIOU.getAmount() == inputAmount) && outputIOU.getLinearId().equals(inputIOU.getLinearId()) && outputIOU.getBorrower().equals(inputIOU.getBorrower()) && outputIOU.getLender().equals(inputIOU.getLender()));
+                require.using("The paid amount must increase in case of part settlement of the IOU.", (outputIOU.getPaid() > inputIOU.getPaid()));
+
+            }
+            Set<PublicKey> listOfParticipantPublicKeys = inputIOU.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
+            List<PublicKey> arrayOfSigners = tx.getCommand(0).getSigners();
+            Set<PublicKey> setOfSigners = new HashSet<PublicKey>(arrayOfSigners);
+            require.using("Both lender and borrower must sign IOU settle transaction.", setOfSigners.equals(listOfParticipantPublicKeys));
+
+            return null;
+        });
 
     }
 

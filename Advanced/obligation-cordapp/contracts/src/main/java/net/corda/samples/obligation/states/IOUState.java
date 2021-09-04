@@ -1,5 +1,6 @@
 package net.corda.samples.obligation.states;
 
+import kotlinx.html.P;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.Party;
 import net.corda.core.identity.AbstractParty;
@@ -24,14 +25,14 @@ import org.jetbrains.annotations.NotNull;
 @BelongsToContract(IOUContract.class)
 public class IOUState implements ContractState, LinearState {
 
-    private final Amount<Currency> amount;
+    private final int amount;
     private final Party lender;
     private final Party borrower;
-    private final Amount<Currency> paid;
+    private final int paid;
     private final UniqueIdentifier linearId;
 
     @ConstructorForDeserialization
-    private IOUState(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid, UniqueIdentifier linearId){
+    public IOUState(int amount, Party lender, Party borrower, int paid, UniqueIdentifier linearId){
         this.amount = amount;
         this.lender = lender;
         this.borrower = borrower;
@@ -39,11 +40,12 @@ public class IOUState implements ContractState, LinearState {
         this.linearId = linearId;
     }
 
-    public IOUState(final Amount<Currency> amount, @NotNull final Party lender, @NotNull final Party borrower) {
-        this(amount, lender, borrower, new Amount<>(0, amount.getToken()), new UniqueIdentifier());
+    public IOUState(@NotNull final int amount, @NotNull final Party lender, @NotNull final Party borrower) {
+        this(amount, lender, borrower, 0, new UniqueIdentifier());
     }
 
-    public Amount<Currency> getAmount() {
+
+    public int getAmount() {
         return amount;
     }
 
@@ -57,7 +59,7 @@ public class IOUState implements ContractState, LinearState {
         return borrower;
     }
 
-    public Amount<Currency> getPaid() {
+    public int getPaid() {
         return paid;
     }
 
@@ -78,21 +80,21 @@ public class IOUState implements ContractState, LinearState {
 
     /**
      * Helper methods for when building transactions for settling and transferring IOUs.
-     * - [pay] adds an amount to the paid property. It does no validation.
      * - [withNewLender] creates a copy of the current states with a newly specified lender. For use when transferring.
      * - [copy] creates a copy of the states using the internal copy constructor ensuring the LinearId is preserved.
      */
-    public IOUState pay(Amount<Currency> amountToPay) {
-        Amount<Currency> newAmountPaid = this.paid.plus(amountToPay);
-        return new IOUState(amount, lender, borrower, newAmountPaid, linearId);
-    }
 
-    public IOUState withNewLender(Party newLender) {
-        return new IOUState(amount, newLender, borrower, paid, linearId);
-    }
+//    public IOUState pay(int amountToPay) {
+//        int newAmountPaid = this.paid + amountToPay;
+//        return new IOUState(amount, lender, borrower, newAmountPaid, linearId);
+//    }
 
-    public IOUState copy(Amount<Currency> amount, Party lender, Party borrower, Amount<Currency> paid) {
-        return new IOUState(amount, lender, borrower, paid, this.getLinearId());
-    }
+//    public IOUState withNewLender(Party newLender) {
+//        return new IOUState(amount, newLender, borrower, paid, linearId);
+//    }
+
+//    public IOUState copy(int amount, Party lender, Party borrower, int paid) {
+//        return new IOUState(amount, lender, borrower, paid, this.getLinearId());
+//    }
 
 }

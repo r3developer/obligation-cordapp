@@ -13,8 +13,6 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 
-
-
 public class IOUStateTests {
 
     @Test
@@ -22,7 +20,7 @@ public class IOUStateTests {
         // Does the amount field exist?
         Field amountField = IOUState.class.getDeclaredField("amount");
         // Is the amount field of the correct type?
-        assertTrue(amountField.getType().isAssignableFrom(Amount.class));
+        assertTrue(amountField.getType().isAssignableFrom(int.class));
     }
 
 
@@ -49,20 +47,20 @@ public class IOUStateTests {
         // Does the paid field exist?
         Field paidField = IOUState.class.getDeclaredField("paid");
         // Is the paid field of the correct type?
-        assertTrue(paidField.getType().isAssignableFrom(Amount.class));
+        assertTrue(paidField.getType().isAssignableFrom(int.class));
     }
 
 
     @Test
     public void lenderIsParticipant() {
-        IOUState iouState = new IOUState(Currencies.POUNDS(0), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iouState = new IOUState(0, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         assertNotEquals(iouState.getParticipants().indexOf(TestUtils.ALICE.getParty()), -1);
     }
 
 
     @Test
     public void borrowerIsParticipant() {
-        IOUState iouState = new IOUState(Currencies.POUNDS(0), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
+        IOUState iouState = new IOUState(0, TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
         assertNotEquals(iouState.getParticipants().indexOf(TestUtils.BOB.getParty()), -1);
     }
 
@@ -102,33 +100,16 @@ public class IOUStateTests {
 
 
     @Test
-    public void checkPayHelperMethod() {
-        IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
-        assertEquals(Currencies.DOLLARS(5), iou.pay(Currencies.DOLLARS(5)).getPaid());
-        assertEquals(Currencies.DOLLARS(3), iou.pay(Currencies.DOLLARS(1)).pay(Currencies.DOLLARS(2)).getPaid());
-        assertEquals(Currencies.DOLLARS(10), iou.pay(Currencies.DOLLARS(5)).pay(Currencies.DOLLARS(3)).pay(Currencies.DOLLARS(2)).getPaid());
-    }
-
-
-    @Test
-    public void checkWithNewLenderHelperMethod() {
-        IOUState iou = new IOUState(Currencies.DOLLARS(10), TestUtils.ALICE.getParty(), TestUtils.BOB.getParty());
-        Assert.assertEquals(TestUtils.MINICORP.getParty(), iou.withNewLender(TestUtils.MINICORP.getParty()).getLender());
-        Assert.assertEquals(TestUtils.MEGACORP.getParty(), iou.withNewLender(TestUtils.MEGACORP.getParty()).getLender());
-    }
-
-
-    @Test
     public void correctConstructorsExist() {
         // Public constructor for new states
         try {
-            Constructor<IOUState> constructor = IOUState.class.getConstructor(Amount.class, Party.class, Party.class);
+            Constructor<IOUState> constructor = IOUState.class.getConstructor(int.class, Party.class, Party.class);
         } catch( NoSuchMethodException nsme ) {
             fail("The correct public constructor does not exist!");
         }
         // Private constructor for updating states
         try {
-            Constructor<IOUState> constructor = IOUState.class.getDeclaredConstructor(Amount.class, Party.class, Party.class, Amount.class, UniqueIdentifier.class);
+            Constructor<IOUState> constructor = IOUState.class.getDeclaredConstructor(int.class, Party.class, Party.class, int.class, UniqueIdentifier.class);
         } catch( NoSuchMethodException nsme ) {
             fail("The correct private copy constructor does not exist!");
         }

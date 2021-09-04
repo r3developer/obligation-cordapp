@@ -14,13 +14,10 @@ import net.corda.samples.obligation.contracts.IOUContract;
 import net.corda.samples.obligation.states.IOUState;
 
 import java.lang.IllegalArgumentException;
+import java.security.PublicKey;
 import java.util.*;
-
-
-import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class IOUSettleFlow {
 
@@ -35,9 +32,9 @@ public class IOUSettleFlow {
     public static class InitiatorFlow extends FlowLogic<SignedTransaction> {
 
         private final UniqueIdentifier stateLinearId;
-        private final Amount<Currency> pay_amount;
+        private final int pay_amount;
 
-        public InitiatorFlow(UniqueIdentifier stateLinearId, Amount<Currency> pay_amount) {
+        public InitiatorFlow(UniqueIdentifier stateLinearId, int pay_amount) {
             this.stateLinearId = stateLinearId;
             this.pay_amount = pay_amount;
         }
@@ -74,16 +71,21 @@ public class IOUSettleFlow {
 
             // Step 4. Add the IOU input states and settle command to the transaction builder.
 
+            ArrayList<PublicKey> listOfKeys = new ArrayList<>();
+            listOfKeys.add(counterparty.getOwningKey());
+            listOfKeys.add(getOurIdentity().getOwningKey());
             Command<IOUContract.Commands.Settle> command = new Command<>(
                     new IOUContract.Commands.Settle(),
-                    Arrays.asList(counterparty.getOwningKey(),getOurIdentity().getOwningKey())
+                    listOfKeys
             );
             tb.addCommand(command);
             tb.addInputState(inputStateAndRefToSettle);
 
             // Step 5. Only add an output IOU states if the IOU has not been fully settled.
-            if (pay_amount.getQuantity() < (inputStateToSettle.getAmount().minus(inputStateToSettle.getPaid())).getQuantity()) {
-                tb.addOutputState(inputStateToSettle.pay(pay_amount), IOUContract.IOU_CONTRACT_ID);
+            if (pay_amount < (inputStateToSettle.getAmount() - inputStateToSettle.getPaid())) {
+
+                IOUState opState = new IOUState(inputStateToSettle.getAmount(),inputStateToSettle.getLender(), inputStateToSettle.getBorrower(),inputStateToSettle.getPaid()+pay_amount, inputStateToSettle.getLinearId());
+                tb.addOutputState(opState, IOUContract.IOU_CONTRACT_ID);
             }
 
             // Step 8. Verify and sign the transaction.
@@ -94,15 +96,16 @@ public class IOUSettleFlow {
             // Step 6. Collect the other party's signature using the CollectSignaturesFlow.Each required signer will need to
             // respond by invoking its own SignTransactionFlow subclass to check the transaction (by implementing the checkTransaction method)
             // and provide their signature if they are satisfied.
-            List<Party> otherParties = inputStateToSettle.getParticipants()
-                    .stream().map(el -> (Party)el)
-                    .collect(Collectors.toList());
+            List<Party> otherParties = new ArrayList<Party>();
+            otherParties.add(inputStateToSettle.getLender());
+            otherParties.add(inputStateToSettle.getBorrower());
 
             otherParties.remove(getOurIdentity());
 
-            List<FlowSession> sessions = otherParties
-                    .stream().map(el -> initiateFlow(el))
-                    .collect(Collectors.toList());
+            List<FlowSession> sessions = new ArrayList<>();
+            for (Party otherParty: otherParties) {
+                sessions.add(initiateFlow(otherParty));
+            }
 
             SignedTransaction stx = subFlow(new CollectSignaturesFlow(ptx, sessions));
 
