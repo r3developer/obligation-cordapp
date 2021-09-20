@@ -57,6 +57,9 @@ public class IOUIssueFlow {
              */
             //final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0); // METHOD 1
             final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
+            if (notary == null) {
+                throw new FlowException("The desired notary is not known" );
+            }
 
             // Generate an unsigned transaction
             Party me = getOurIdentity();
@@ -74,11 +77,9 @@ public class IOUIssueFlow {
             builder.addOutputState(state, IOUContract.IOU_CONTRACT_ID);
             builder.addCommand(issueCommand);
 
-
             // Step 5. Verify and sign it with our KeyPair.
             builder.verify(getServiceHub());
             final SignedTransaction ptx = getServiceHub().signInitialTransaction(builder);
-
 
             // Step 6. Collect the other party's signature using the CollectSignaturesFlow.Each required signer will need to
             // respond by invoking its own SignTransactionFlow subclass to check the transaction (by implementing the checkTransaction method)
@@ -86,17 +87,13 @@ public class IOUIssueFlow {
             List<Party> otherParties = new ArrayList<Party>();
             otherParties.add(state.getLender());
             otherParties.add(state.getBorrower());
-
             otherParties.remove(getOurIdentity());
 
-
-            // 9. Collect all of the required signatures from other Corda nodes using the CollectSignaturesFlow
+            // Collect all of the required signatures from other Corda nodes using the CollectSignaturesFlow
             List<FlowSession> sessions = new ArrayList<>();
-
             for (Party otherParty: otherParties) {
                 sessions.add(initiateFlow(otherParty));
                 }
-
             SignedTransaction stx = subFlow(new CollectSignaturesFlow(ptx, sessions));
 
             // Step 7. Assuming no exceptions, we can now finalise the transaction
@@ -124,8 +121,8 @@ public class IOUIssueFlow {
 
             class SignTxFlow extends SignTransactionFlow {
 
-                private SignTxFlow(FlowSession flowSession, ProgressTracker progressTracker) {
-                    super(flowSession, progressTracker);
+                private SignTxFlow(FlowSession flowSession) {
+                    super(flowSession);
                 }
 
                 @Override
@@ -143,7 +140,7 @@ public class IOUIssueFlow {
             flowSession.getCounterpartyFlowInfo().getFlowVersion();
 
             // Create a sign transaction flows
-            SignTxFlow signTxFlow = new SignTxFlow(flowSession, SignTransactionFlow.Companion.tracker());
+            SignTxFlow signTxFlow = new SignTxFlow(flowSession);
 
             // Run the sign transaction flows to sign the transaction
             subFlow(signTxFlow);

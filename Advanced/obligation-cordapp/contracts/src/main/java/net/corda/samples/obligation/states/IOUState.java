@@ -32,7 +32,7 @@ public class IOUState implements ContractState, LinearState {
     private final UniqueIdentifier linearId;
 
     @ConstructorForDeserialization
-    public IOUState(int amount, Party lender, Party borrower, int paid, UniqueIdentifier linearId){
+    public IOUState(@NotNull final int amount,@NotNull final Party lender,@NotNull final Party borrower,@NotNull final int paid,@NotNull final UniqueIdentifier linearId){
         this.amount = amount;
         this.lender = lender;
         this.borrower = borrower;
@@ -78,23 +78,5 @@ public class IOUState implements ContractState, LinearState {
         return ImmutableList.of(lender, borrower);
     }
 
-    /**
-     * Helper methods for when building transactions for settling and transferring IOUs.
-     * - [withNewLender] creates a copy of the current states with a newly specified lender. For use when transferring.
-     * - [copy] creates a copy of the states using the internal copy constructor ensuring the LinearId is preserved.
-     */
-
-//    public IOUState pay(int amountToPay) {
-//        int newAmountPaid = this.paid + amountToPay;
-//        return new IOUState(amount, lender, borrower, newAmountPaid, linearId);
-//    }
-
-//    public IOUState withNewLender(Party newLender) {
-//        return new IOUState(amount, newLender, borrower, paid, linearId);
-//    }
-
-//    public IOUState copy(int amount, Party lender, Party borrower, int paid) {
-//        return new IOUState(amount, lender, borrower, paid, this.getLinearId());
-//    }
 
 }

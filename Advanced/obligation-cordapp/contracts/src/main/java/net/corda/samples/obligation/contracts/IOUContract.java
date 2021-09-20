@@ -141,7 +141,7 @@ public class IOUContract implements Contract {
                 require.using("Only the paid amount can change during part settlement.",
                         (outputIOU.getAmount() == inputAmount) && outputIOU.getLinearId().equals(inputIOU.getLinearId()) && outputIOU.getBorrower().equals(inputIOU.getBorrower()) && outputIOU.getLender().equals(inputIOU.getLender()));
                 require.using("The paid amount must increase in case of part settlement of the IOU.", (outputIOU.getPaid() > inputIOU.getPaid()));
-
+                require.using("The paid amount must be less than the total amount of the IOU", (outputIOU.getPaid() < inputIOU.getAmount()));
             }
             Set<PublicKey> listOfParticipantPublicKeys = inputIOU.getParticipants().stream().map(AbstractParty::getOwningKey).collect(Collectors.toSet());
             List<PublicKey> arrayOfSigners = tx.getCommand(0).getSigners();
