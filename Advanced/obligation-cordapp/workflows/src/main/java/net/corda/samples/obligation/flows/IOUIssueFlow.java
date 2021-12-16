@@ -50,13 +50,9 @@ public class IOUIssueFlow {
         public SignedTransaction call() throws FlowException {
             // Step 1. Get a reference to the notary service on our network and our key pair.
 
-            /** METHOD 1: Take first notary on network, WARNING: use for test, non-prod environments, and single-notary networks only!*
-             *  METHOD 2: Explicit selection of notary by CordaX500Name - argument can by coded in flows or parsed from config (Preferred)
-             *
-             *  * - For production you always want to use Method 2 as it guarantees the expected notary is returned.
+            /** Explicit selection of notary by CordaX500Name - argument can by coded in flows or parsed from config
              */
-            //final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0); // METHOD 1
-            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
+            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
             if (notary == null) {
                 throw new FlowException("The desired notary is not known" );
             }

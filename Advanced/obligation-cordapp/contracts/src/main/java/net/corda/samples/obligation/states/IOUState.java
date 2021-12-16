@@ -1,6 +1,5 @@
 package net.corda.samples.obligation.states;
 
-import kotlinx.html.P;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.Party;
 import net.corda.core.identity.AbstractParty;
