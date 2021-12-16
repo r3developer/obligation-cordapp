@@ -13,13 +13,13 @@ cordapp {
 }
 
 sourceSets {
-    main{
+    main {
         java {
             srcDir 'src/main/java'
             java.outputDir = file('bin/main')
         }
     }
-    test{
+    test {
         java {
             srcDir 'src/test/java'
             java.outputDir = file('bin/test')

@@ -4,12 +4,16 @@ package net.corda.samples.obligation.states;
 import net.corda.finance.*;
 import net.corda.core.contracts.*;
 import net.corda.core.identity.Party;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Constructor;
+
 import net.corda.samples.obligation.TestUtils;
 import org.junit.Assert;
 import org.junit.Test;
+
 import java.util.*;
+
 import static org.junit.Assert.*;
 
 
@@ -67,7 +71,7 @@ public class IOUStateTests {
 
     @Test
     public void isLinearState() {
-        assert(LinearState.class.isAssignableFrom(IOUState.class));
+        assert (LinearState.class.isAssignableFrom(IOUState.class));
     }
 
 
@@ -104,13 +108,13 @@ public class IOUStateTests {
         // Public constructor for new states
         try {
             Constructor<IOUState> constructor = IOUState.class.getConstructor(int.class, Party.class, Party.class);
-        } catch( NoSuchMethodException nsme ) {
+        } catch (NoSuchMethodException nsme) {
             fail("The correct public constructor does not exist!");
         }
         // Private constructor for updating states
         try {
             Constructor<IOUState> constructor = IOUState.class.getDeclaredConstructor(int.class, Party.class, Party.class, int.class, UniqueIdentifier.class);
-        } catch( NoSuchMethodException nsme ) {
+        } catch (NoSuchMethodException nsme) {
             fail("The correct private copy constructor does not exist!");
         }
     }

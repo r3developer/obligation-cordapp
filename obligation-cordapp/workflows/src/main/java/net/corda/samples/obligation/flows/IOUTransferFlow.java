@@ -12,6 +12,7 @@ import net.corda.core.contracts.UniqueIdentifier;
 import net.corda.core.identity.AbstractParty;
 import net.corda.core.identity.Party;
 import net.corda.core.node.services.Vault;
+import net.corda.core.identity.CordaX500Name;
 import net.corda.core.node.services.vault.QueryCriteria;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
@@ -34,7 +35,7 @@ import static net.corda.core.contracts.ContractsDSL.requireThat;
  * The flows returns the [SignedTransaction] that was committed to the ledger.
  */
 
-public class IOUTransferFlow{
+public class IOUTransferFlow {
 
     @InitiatingFlow
     @StartableByRPC
@@ -67,8 +68,7 @@ public class IOUTransferFlow{
             // Obtain a reference to a notary we wish to use.
             /** Explicit selection of notary by CordaX500Name - argument can by coded in flows or parsed from config
              */
-            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0); // METHOD 1
-            // final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
+            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
 
             TransactionBuilder tb = new TransactionBuilder(notary);
 
@@ -88,7 +88,8 @@ public class IOUTransferFlow{
 
             // 6. Add input and output states to flows using the TransactionBuilder.
             tb.addInputState(inputStateAndRefToTransfer);
-            IOUState opState = new IOUState(inputStateToTransfer.getAmount(), newLender, inputStateToTransfer.getBorrower(), inputStateToTransfer.getPaid(), inputStateToTransfer.getLinearId());
+            IOUState opState = inputStateToTransfer.withNewLender(newLender);
+            //IOUState opState = new IOUState(inputStateToTransfer.getAmount(), newLender, inputStateToTransfer.getBorrower(), inputStateToTransfer.getPaid(), inputStateToTransfer.getLinearId());
             tb.addOutputState(opState, IOUContract.IOU_CONTRACT_ID);
 
             // 7. Ensure that this flows is being executed by the current lender.
@@ -103,7 +104,7 @@ public class IOUTransferFlow{
             // 9. Collect all of the required signatures from other Corda nodes using the CollectSignaturesFlow
             List<FlowSession> sessions = new ArrayList<>();
 
-            for (AbstractParty participant: inputStateToTransfer.getParticipants()) {
+            for (AbstractParty participant : inputStateToTransfer.getParticipants()) {
                 Party partyToInitiateFlow = (Party) participant;
                 if (!partyToInitiateFlow.getOwningKey().equals(getOurIdentity().getOwningKey())) {
                     sessions.add(initiateFlow(partyToInitiateFlow));

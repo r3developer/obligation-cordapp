@@ -1,58 +1,70 @@
 # Obligation Cordap
 
-This Cordapp is the complete implementation of our signature IOU (I-owe-you) demonstration.
+This Cordapp is the complete implementation of our signature IOU (I-owe-you) demonstration.This sample has been created
+for learning and training and is not been tested for production.
 
 ## Concepts
 
-An IOU is someone who has cash that is paying it back to someone they owe it to. You have to have the original concept of the debt itself, (the IOU), and the cash. Then the ability to exchange assets like cash or assets, and then the ability to settle up. Given this is intended to implement an IOU, our cordapp consists of three flows `issue`, `transfer` and `settle` flows.
-
+An IOU is a loan agreement between a borrower, and a lender with the borrower saying "I OWE YOU" an amount.You have to
+have the original concept of the debt itself - the IOU. Then the ability to transfer the IOU from one lender to another
+and finally the ability to settle up. Similar logic could be utilized to trade assets on Corda. Given this is intended
+to implement an IOU, our cordapp consists of three flows `issue`
+, `transfer` and `settle` flows.
 
 ### Flows
 
-The first flows are the ones that issue the original cash and assets. You can find that the cash flow at `SelfIssueCashFlow.java` and the IOU issurance in `IOUIssueFlow.java`.
+The first flows are the ones that issue the loan agreement.You can find the IOU issurance in `IOUIssueFlow.java`.
 
-The next flow is the one that transfers ownership of that asset over to another party. That can be found in `IOUTransferFlow.java`.
+The next flow is the one that transfers ownership of that asset over to another party. That can be found
+in `IOUTransferFlow.java`.
 
-
-Finally, once we have the ability to transfer assets, we just need to settle up. That functiionality can be found here in `IOUSettleFlow.java`
-
-
+Finally, once we have the ability to transfer assets, we just need to settle up. That functionality can be found here
+in `IOUSettleFlow.java`
 
 ## Usage
 
 ### Running the CorDapp
 
-Once your application passes all tests in `IOUStateTests`, `IOUIssueTests`, and `IOUIssueFlowTests`, you can run the application and
-interact with it via a web browser. To run the finished application, you have two choices for each language: from the terminal, and from IntelliJ.
+1. Open a terminal and go to the project root directory and type: (to deploy the nodes using bootstrapper)
 
-Open a terminal and go to the project root directory and type: (to deploy the nodes using bootstrapper)
 ```
 ./gradlew clean deployNodes
 ```
+
 Then type: (to run the nodes)
+
 ```
 ./build/nodes/runnodes
 ```
 
-### Starting the webserver
-Once the nodes are up, we will start the webservers next. This app consists of three nodes and one notary, so we will be starting 3 webservers separately. First, lets start PartyA's webserver. Open a new tab of the terminal (make sure you are still in the project directory) and run:
+2. To issue an IOU with ParticipantA as borrower and ParticipantB as lender.
+
 ```
-./gradlew runPartyAServer
-```
-repeat the same for PartyB and PartyC, run each of the commands in a new tab:
-```
-./gradlew runPartyBServer
-```
-and
-```
-./gradlew runPartyCServer
+flow start IOUIssueFlow$InitiatorFlow amount: 10, lender: "O=ParticipantB,L=New York,C=US"
 ```
 
-### Interacting with the CorDapp
+3. Run valut query and check which nodes have the created state in their vault.
 
-Once all the three servers have started up (look for `Webserver started up in XXX sec` in the terminal), you can interact with the app via a web browser.
-* From a Node Driver configuration, look for `Starting webserver on address localhost:100XX` for the addresses.
+```
+run vaultQuery contractStateType: net.corda.samples.obligation.states.IOUState
+```
 
-* From the terminal: Node A: `localhost:10009`, Node B: `localhost:10012`, Node C: `localhost:10015`.
+4. Above command will give you the `linearId` of the state. Use it to start transfer flow at ParticipantB.
 
-To access the front-end gui for each node, navigate to `localhost:XXXX/web/iou/`
+```
+flow start IOUTransferFlow$InitiatorFlow stateLinearId: "5afa8813-78d1-4015-b86d-2c090fb207f3", newLender: "O=ParticipantC,L=Paris,C=FR"
+```
+
+Now you could query the vault of ParticipantC to find the IOU state.
+
+5. Settle the flow in-part/ full from ParticipantA
+
+```
+flow start IOUSettleFlow$InitiatorFlow stateLinearId: "b92072bd-2b5a-40be-9b98-ec73e2a83867", pay_amount: 5
+```
+
+or
+
+```
+flow start IOUSettleFlow$InitiatorFlow stateLinearId: "b92072bd-2b5a-40be-9b98-ec73e2a83867", pay_amount: 10
+```

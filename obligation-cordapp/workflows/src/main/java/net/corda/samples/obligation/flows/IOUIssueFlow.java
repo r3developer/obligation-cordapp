@@ -19,7 +19,9 @@ import net.corda.core.identity.Party;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.transactions.SignedTransaction;
 import net.corda.core.transactions.TransactionBuilder;
+
 import static net.corda.core.contracts.ContractsDSL.requireThat;
+
 import net.corda.core.utilities.ProgressTracker;
 import net.corda.samples.obligation.contracts.IOUContract;
 import net.corda.samples.obligation.states.IOUState;
@@ -39,12 +41,16 @@ public class IOUIssueFlow {
     @StartableByRPC
     public static class InitiatorFlow extends FlowLogic<SignedTransaction> {
 
-        private final IOUState state;
-        public InitiatorFlow(IOUState iouState) {
+        private final int amount;
+        private final Party lender;
 
-            this.state = iouState;
+        public InitiatorFlow(int amount, Party lender) {
+
+            this.amount = amount;
+            this.lender = lender;
 
         }
+
         @Suspendable
         @Override
         public SignedTransaction call() throws FlowException {
@@ -54,11 +60,12 @@ public class IOUIssueFlow {
              */
             final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB"));
             if (notary == null) {
-                throw new FlowException("The desired notary is not known" );
+                throw new FlowException("The desired notary is not known");
             }
 
             // Generate an unsigned transaction
             Party me = getOurIdentity();
+            IOUState state = new IOUState(amount, lender, me);
             // Step 2. Create a new issue command.
             // Remember that a command is a CommandData object and a list of CompositeKeys
             List<PublicKey> listOfKeys = new ArrayList<>();
@@ -87,9 +94,9 @@ public class IOUIssueFlow {
 
             // Collect all of the required signatures from other Corda nodes using the CollectSignaturesFlow
             List<FlowSession> sessions = new ArrayList<>();
-            for (Party otherParty: otherParties) {
+            for (Party otherParty : otherParties) {
                 sessions.add(initiateFlow(otherParty));
-                }
+            }
             SignedTransaction stx = subFlow(new CollectSignaturesFlow(ptx, sessions));
 
             // Step 7. Assuming no exceptions, we can now finalise the transaction
@@ -107,7 +114,7 @@ public class IOUIssueFlow {
         private final FlowSession flowSession;
         private SecureHash txWeJustSigned;
 
-        public ResponderFlow(FlowSession flowSession){
+        public ResponderFlow(FlowSession flowSession) {
             this.flowSession = flowSession;
         }
 

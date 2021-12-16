@@ -13,8 +13,10 @@ import net.corda.samples.obligation.TestUtils;
 import net.corda.testing.node.MockServices;
 import net.corda.samples.obligation.states.IOUState;
 import org.junit.Test;
+
 import java.util.Arrays;
 import java.util.Currency;
+
 import static net.corda.testing.node.NodeTestUtils.ledger;
 
 /**
@@ -27,7 +29,8 @@ import static net.corda.testing.node.NodeTestUtils.ledger;
 public class IOUTransferTests {
     // A pre-defined dummy command.
     public interface Commands extends CommandData {
-        class DummyCommand extends TypeOnlyCommandData implements Commands{}
+        class DummyCommand extends TypeOnlyCommandData implements Commands {
+        }
     }
 
     static private final MockServices ledgerServices = new MockServices(
@@ -56,21 +59,21 @@ public class IOUTransferTests {
      * Hint:
      * - As with the [Issue] command, add the [Transfer] command within the [IOUContract.Commands].
      * - Again, we only care about the existence of the [Transfer] command in a transaction, therefore it should
-     *   subclass the [TypeOnlyCommandData].
+     * subclass the [TypeOnlyCommandData].
      * - You can use the [requireSingleCommand] function to check for the existence of a command which implements a
-     *   specified interface:
-     *
-     *       final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), Commands.class);
-     *       final Commands commandData = command.getValue();
-     *
-     *   To match any command that implements [IOUContract.Commands]
+     * specified interface:
+     * <p>
+     * final CommandWithParties<Commands> command = requireSingleCommand(tx.getCommands(), Commands.class);
+     * final Commands commandData = command.getValue();
+     * <p>
+     * To match any command that implements [IOUContract.Commands]
      * - We then need conditional logic based on the type of [Command.value], in Java you can do this using an "if-else" statement
      * - For each "if", or "elseIf" block, you can check the type of [Command.value]:
-     *
-     *        if (commandData.equals(new Commands.Issue())) {
-     *        requireThat(require -> {...})
-     *        } else if (...) {}
-     *
+     * <p>
+     * if (commandData.equals(new Commands.Issue())) {
+     * requireThat(require -> {...})
+     * } else if (...) {}
+     * <p>
      * - The [requireSingleCommand] function will handle unrecognised types for you (see first unit test).
      */
     @Test
@@ -135,7 +138,7 @@ public class IOUTransferTests {
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
                 tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(iou.getAmount(), TestUtils.CHARLIE.getParty(), iou.getBorrower(), iou.getPaid(), iou.getLinearId()));
-                tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.CHARLIE.getPublicKey()),new IOUContract.Commands.Transfer());
+                tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.CHARLIE.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.verifies();
             });
             return null;
@@ -151,7 +154,7 @@ public class IOUTransferTests {
      * - You'll need references to the input and output ious.
      * - Remember you need to cast the [ContractState]s to [IOUState]s.
      * - It's easier to take this approach then check all properties other than the lender haven't changed, including
-     *   the [linearId] and the [contracts]!
+     * the [linearId] and the [contracts]!
      */
     @Test
     public void onlyTheLenderMayChange() {
@@ -203,7 +206,7 @@ public class IOUTransferTests {
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.CHARLIE.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.verifies();
             });
@@ -228,31 +231,31 @@ public class IOUTransferTests {
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.CHARLIE.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.failsWith("The borrower, old lender and new lender only must sign an IOU transfer transaction");
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.CHARLIE.getPublicKey(), TestUtils.BOB.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.failsWith("The borrower, old lender and new lender only must sign an IOU transfer transaction");
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.MINICORP.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.failsWith("The borrower, old lender and new lender only must sign an IOU transfer transaction");
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.CHARLIE.getPublicKey(), TestUtils.MINICORP.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.failsWith("The borrower, old lender and new lender only must sign an IOU transfer transaction");
             });
             l.transaction(tx -> {
                 tx.input(IOUContract.IOU_CONTRACT_ID, iou);
-                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(),0, iou.getLinearId()));
+                tx.output(IOUContract.IOU_CONTRACT_ID, new IOUState(10, TestUtils.CHARLIE.getParty(), TestUtils.BOB.getParty(), 0, iou.getLinearId()));
                 tx.command(Arrays.asList(TestUtils.ALICE.getPublicKey(), TestUtils.BOB.getPublicKey(), TestUtils.CHARLIE.getPublicKey()), new IOUContract.Commands.Transfer());
                 return tx.verifies();
             });

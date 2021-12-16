@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable;
 import net.corda.core.contracts.*;
 import net.corda.core.crypto.SecureHash;
 import net.corda.core.flows.*;
+import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.core.node.services.Vault;
 import net.corda.core.node.services.vault.QueryCriteria;
@@ -60,8 +61,7 @@ public class IOUSettleFlow {
             // Obtain a reference to a notary we wish to use.
             /** Explicit selection of notary by CordaX500Name - argument can by coded in flows or parsed from config
              */
-            final Party notary = getServiceHub().getNetworkMapCache().getNotaryIdentities().get(0); // METHOD 1
-            // final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
+            final Party notary = getServiceHub().getNetworkMapCache().getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")); // METHOD 2
 
             TransactionBuilder tb = new TransactionBuilder(notary);
 
@@ -81,7 +81,7 @@ public class IOUSettleFlow {
             // Step 5. Only add an output IOU states if the IOU has not been fully settled.
             if (pay_amount < (inputStateToSettle.getAmount() - inputStateToSettle.getPaid())) {
 
-                IOUState opState = new IOUState(inputStateToSettle.getAmount(),inputStateToSettle.getLender(), inputStateToSettle.getBorrower(),inputStateToSettle.getPaid()+pay_amount, inputStateToSettle.getLinearId());
+                IOUState opState = new IOUState(inputStateToSettle.getAmount(), inputStateToSettle.getLender(), inputStateToSettle.getBorrower(), inputStateToSettle.getPaid() + pay_amount, inputStateToSettle.getLinearId());
                 tb.addOutputState(opState, IOUContract.IOU_CONTRACT_ID);
             }
 
@@ -100,7 +100,7 @@ public class IOUSettleFlow {
             otherParties.remove(getOurIdentity());
 
             List<FlowSession> sessions = new ArrayList<>();
-            for (Party otherParty: otherParties) {
+            for (Party otherParty : otherParties) {
                 sessions.add(initiateFlow(otherParty));
             }
 
