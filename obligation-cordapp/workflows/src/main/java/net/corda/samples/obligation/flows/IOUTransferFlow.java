@@ -88,8 +88,7 @@ public class IOUTransferFlow {
 
             // 6. Add input and output states to flows using the TransactionBuilder.
             tb.addInputState(inputStateAndRefToTransfer);
-            IOUState opState = inputStateToTransfer.withNewLender(newLender);
-            //IOUState opState = new IOUState(inputStateToTransfer.getAmount(), newLender, inputStateToTransfer.getBorrower(), inputStateToTransfer.getPaid(), inputStateToTransfer.getLinearId());
+            IOUState opState = new IOUState(inputStateToTransfer.getAmount(), newLender, inputStateToTransfer.getBorrower(), inputStateToTransfer.getPaid(), inputStateToTransfer.getLinearId());
             tb.addOutputState(opState, IOUContract.IOU_CONTRACT_ID);
 
             // 7. Ensure that this flows is being executed by the current lender.

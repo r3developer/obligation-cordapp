@@ -79,9 +79,5 @@ public class IOUState implements ContractState, LinearState {
         return ImmutableList.of(lender, borrower);
     }
 
-    public IOUState withNewLender(Party newLender) {
-        return new IOUState(amount, newLender, borrower, paid, linearId);
-    }
-
 
 }

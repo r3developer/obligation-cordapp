@@ -37,7 +37,8 @@ Then type: (to run the nodes)
 ./build/nodes/runnodes
 ```
 
-2. To issue an IOU with ParticipantA as borrower and ParticipantB as lender.
+2. To issue an IOU with ParticipantA as borrower and ParticipantB as lender. Run the below command at ParticipantA 
+   terminal.
 
 ```
 flow start IOUIssueFlow$InitiatorFlow amount: 10, lender: "O=ParticipantB,L=New York,C=US"
